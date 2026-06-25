@@ -10,7 +10,7 @@ object RetrofitClient {
 
     // ⚠️ Change this when Member 3 & 4 give you the real server URL
     // For now it points to your PC's localhost (works on Android emulator)
-    private const val BASE_URL = "http://10.0.2.2:8000/"
+    private const val BASE_URL = "https://overhead-skimming-embezzle.ngrok-free.dev/"
 
     // Shows full request & response logs in Logcat — very helpful for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

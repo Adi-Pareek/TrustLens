@@ -22,7 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.trustlens.app.data.model.UploadUiState
-import com.trustlens.app.data.model.VerifyApiResponse
+//import com.trustlens.app.data.model.VerifyApiResponse
 import com.trustlens.app.ui.Screen
 import com.trustlens.app.ui.theme.*
 import com.trustlens.app.viewmodel.VerificationViewModel
@@ -251,6 +251,15 @@ fun DashboardScreen(
                 }
             }
 
+            // source Verification
+            // Source Verification
+            SectionCard(title = "Source Verification") {
+                Text(
+                    text = "Source verification data not available.",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
@@ -317,6 +326,7 @@ fun RiskBadge(
     }
 }
 
+//sectionCard
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
@@ -328,6 +338,44 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(modifier = Modifier.height(12.dp))
             content()
+        }
+    }
+
+    //changes
+
+    @Composable
+    fun SourceItem(
+        source: String,
+        status: String,
+        verified: Boolean
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (verified) "✅" else "⚠️",
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column {
+                Text(
+                    text = source,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary
+                )
+
+                Text(
+                    text = status,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
         }
     }
 }
