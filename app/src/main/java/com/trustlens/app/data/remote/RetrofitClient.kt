@@ -8,20 +8,27 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    // ⚠️ Backend teammate: replace this with real URL
-    private const val BASE_URL = "https://your-backend-url.com/"
+    // ⚠️ Change this when Member 3 & 4 give you the real server URL
+    // For now it points to your PC's localhost (works on Android emulator)
+    private const val BASE_URL = "http://10.0.2.2:8000/"
 
+    // Shows full request & response logs in Logcat — very helpful for debugging
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
+    // OkHttp client with timeouts
+    // connectTimeout — how long to wait to connect to server
+    // readTimeout    — how long to wait for server to respond
+    // writeTimeout   — how long to wait while sending file
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
+    // Single shared instance of ApiService
     val apiService: ApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)

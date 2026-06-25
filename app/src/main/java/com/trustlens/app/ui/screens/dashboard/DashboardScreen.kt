@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.trustlens.app.data.model.VerificationResponse
+import com.trustlens.app.data.model.UploadUiState
+import com.trustlens.app.data.model.VerifyApiResponse
 import com.trustlens.app.ui.Screen
 import com.trustlens.app.ui.theme.*
 import com.trustlens.app.viewmodel.VerificationViewModel
@@ -31,28 +32,29 @@ fun DashboardScreen(
     navController: NavController,
     viewModel: VerificationViewModel = viewModel()
 ) {
-    val result by viewModel.result.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val result = (uiState as? UploadUiState.Success)?.result
 
     val contentAlpha = remember { Animatable(0f) }
-    val trustScore = remember { Animatable(0f) }
-
+    val trustScoreAnim = remember { Animatable(0f) }
     val targetScore = result?.trustScore?.toFloat() ?: 87f
 
     LaunchedEffect(result) {
         contentAlpha.animateTo(1f, animationSpec = tween(500))
-        trustScore.animateTo(
+        trustScoreAnim.animateTo(
             targetValue = targetScore,
             animationSpec = tween(1500, easing = EaseOutCubic)
         )
     }
 
     val scoreColor = when {
-        trustScore.value >= 75f -> ScoreHigh
-        trustScore.value >= 50f -> ScoreMedium
+        trustScoreAnim.value >= 75f -> ScoreHigh
+        trustScoreAnim.value >= 50f -> ScoreMedium
         else -> ScoreLow
     }
 
-    val riskLabel = when (result?.riskLevel ?: "LOW") {
+    // Map "Low" / "Medium" / "High" from API to display label
+    val riskLabel = when (result?.risk?.uppercase() ?: "LOW") {
         "LOW" -> "LOW"
         "MEDIUM" -> "MEDIUM"
         "HIGH" -> "HIGH"
@@ -143,8 +145,7 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 val strokeWidth = 16.dp.toPx()
-                                val sweepAngle = (trustScore.value / 100f) * 300f
-
+                                val sweepAngle = (trustScoreAnim.value / 100f) * 300f
                                 drawArc(
                                     color = SurfaceElevated,
                                     startAngle = 120f,
@@ -167,7 +168,7 @@ fun DashboardScreen(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "${trustScore.value.toInt()}",
+                                    text = "${trustScoreAnim.value.toInt()}",
                                     fontSize = 48.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = scoreColor
@@ -187,7 +188,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = result?.aiSummary?.take(60) ?: "This document appears authentic",
+                            text = result?.summary?.take(60) ?: "This document appears authentic",
                             fontSize = 14.sp,
                             color = TextSecondary,
                             textAlign = TextAlign.Center
@@ -204,8 +205,8 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 RiskBadge("🛡️", "Risk Level", riskLabel, scoreColor, Modifier.weight(1f))
-                RiskBadge("✅", "Verified By", result?.verifiedBy ?: "AI + OCR", TrustCyan, Modifier.weight(1f))
-                RiskBadge("⏱️", "Scan Time", "${result?.scanTimeSeconds ?: 18}s", TextPrimary, Modifier.weight(1f))
+                RiskBadge("✅", "Verdict", result?.verdict ?: "AUTHENTIC", TrustCyan, Modifier.weight(1f))
+                RiskBadge("🤖", "Powered By", "AI + OCR", TextPrimary, Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -213,7 +214,7 @@ fun DashboardScreen(
             // AI Summary
             SectionCard(title = "🤖 AI Analysis Summary") {
                 Text(
-                    text = result?.aiSummary ?: "Analysis complete.",
+                    text = result?.summary ?: "Analysis complete.",
                     fontSize = 13.sp,
                     color = TextSecondary,
                     lineHeight = 20.sp
@@ -222,22 +223,10 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Checklist
-            SectionCard(title = "✅ Verification Checklist") {
-                val checklist = result?.verificationChecklist
-                if (checklist != null) {
-                    checklist.forEach { item ->
-                        ChecklistItem(item.label, item.passed, item.detail)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Detected Issues
+            // Detected Issues / Differences
             SectionCard(title = "⚠️ Detected Issues") {
-                val issues = result?.detectedIssues
-                if (issues.isNullOrEmpty()) {
+                val differences = result?.differences
+                if (differences.isNullOrEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -256,20 +245,9 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    issues.forEach { issue ->
+                    differences.forEach { issue ->
                         Text("• $issue", fontSize = 13.sp, color = ScoreLow, lineHeight = 20.sp)
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Source Verification
-            SectionCard(title = "🌐 Source Verification") {
-                val sources = result?.sourceVerifications
-                sources?.forEachIndexed { index, source ->
-                    SourceItem(source.source, source.status, source.verified)
-                    if (index < sources.lastIndex) Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -282,7 +260,9 @@ fun DashboardScreen(
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = TrustCyan,
@@ -296,7 +276,9 @@ fun DashboardScreen(
 
             OutlinedButton(
                 onClick = { },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, TextDisabled)
             ) {
@@ -309,14 +291,22 @@ fun DashboardScreen(
 }
 
 @Composable
-fun RiskBadge(emoji: String, label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+fun RiskBadge(
+    emoji: String,
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceCard)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(emoji, fontSize = 20.sp)
@@ -338,62 +328,6 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(modifier = Modifier.height(12.dp))
             content()
-        }
-    }
-}
-
-@Composable
-fun ChecklistItem(label: String, passed: Boolean, detail: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .background(
-                    if (passed) ScoreHigh.copy(alpha = 0.15f) else ScoreLow.copy(alpha = 0.15f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (passed) "✓" else "✗",
-                fontSize = 12.sp,
-                color = if (passed) ScoreHigh else ScoreLow,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column {
-            Text(label, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-            Text(detail, fontSize = 11.sp, color = TextSecondary)
-        }
-    }
-}
-
-@Composable
-fun SourceItem(source: String, status: String, verified: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(if (verified) ScoreHigh else ScoreMedium, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(source, fontSize = 13.sp, color = TextPrimary)
-        }
-        Box(
-            modifier = Modifier
-                .background(ScoreHigh.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            Text(status, fontSize = 11.sp, color = ScoreHigh, fontWeight = FontWeight.Medium)
         }
     }
 }
