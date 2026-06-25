@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     // ⚠️ Backend teammate: replace this with real URL
-    private const val BASE_URL = "https://your-backend-url.com/"
+    private const val BASE_URL = "https://overhead-skimming-embezzle.ngrok-free.dev/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

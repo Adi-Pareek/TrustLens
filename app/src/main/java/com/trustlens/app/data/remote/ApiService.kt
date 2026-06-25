@@ -10,7 +10,7 @@ import retrofit2.http.Part
 interface ApiService {
 
     @Multipart
-    @POST("api/verify")
+    @POST("process-document")
     suspend fun verifyDocument(
         @Part file: MultipartBody.Part
     ): Response<VerificationResponse>
