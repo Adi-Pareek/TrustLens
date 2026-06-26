@@ -2,14 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 
 def find_official_source(issuer, title):
-
-    if not issuer:
-        return {
-            "issuer": "Unknown",
-            "official_source": None,
-            "confidence": 0.0
-        }
-
     query = f"{issuer} official website"
 
     url = f"https://www.google.com/search?q={query}"
@@ -20,25 +12,22 @@ def find_official_source(issuer, title):
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code != 200:
-        return {
-            "issuer": issuer,
-            "official_source": None,
-            "confidence": 0.0
-        }
-
     soup = BeautifulSoup(response.text, "html.parser")
 
-    links = []
-    for a in soup.find_all("a"):
-        href = a.get("href")
-        if href and "http" in href:
-            links.append(href)
+    for link in soup.find_all("a"):
+        href = link.get("href")
 
-    official_link = links[0] if links else None
+        if href and "url?q=" in href:
+            official_link = href.split("url?q=")[1].split("&")[0]
+
+            return {
+                "issuer": issuer,
+                "official_source": official_link,
+                "confidence": 0.85
+            }
 
     return {
         "issuer": issuer,
-        "official_source": official_link,
-        "confidence": 0.8 if official_link else 0.0
+        "official_source": None,
+        "confidence": 0.0
     }
