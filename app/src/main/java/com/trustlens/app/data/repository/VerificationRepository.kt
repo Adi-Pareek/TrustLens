@@ -18,7 +18,7 @@ class VerificationRepository(private val context: Context) {
 
     fun verifyDocument(uri: Uri): Flow<UploadUiState> = flow {
 
-        emit(UploadUiState.Uploading(0.1f, "📤 Uploading document..."))
+        emit(UploadUiState.Uploading(0.1f, "Uploading document..."))
 
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
@@ -27,79 +27,74 @@ class VerificationRepository(private val context: Context) {
             val bytes = inputStream.readBytes()
             inputStream.close()
 
-            val requestBody = bytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
-            val filePart = MultipartBody.Part.createFormData("file", "document", requestBody)
+            val requestBody =
+                bytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
 
-            // STEP 1 — OCR
-            emit(UploadUiState.Uploading(0.4f, "🔎 Running OCR..."))
+            val filePart =
+                MultipartBody.Part.createFormData("file", "document", requestBody)
 
-            val extractResponse = RetrofitClient.apiService.extractDocument(filePart)
+            // STEP 1 â€” OCR
+            emit(UploadUiState.Uploading(0.4f, "Running OCR..."))
+
+            val extractResponse =
+                RetrofitClient.apiService.extractDocument(filePart)
 
             if (!extractResponse.isSuccessful || extractResponse.body() == null) {
-                emit(UploadUiState.Error("OCR extraction failed: ${extractResponse.code()}"))
+                emit(UploadUiState.Error("OCR extraction failed"))
                 return@flow
             }
 
             val extractResult = extractResponse.body()!!
 
-            // STEP 2 — Source Discovery
-            emit(UploadUiState.Uploading(0.6f, "🌐 Finding official source..."))
+            // STEP 2 â€” Source Discovery
+            emit(UploadUiState.Uploading(0.6f, "Finding official source..."))
 
             val sourceRequest = SourceDiscoveryRequest(
                 documentId = extractResult.documentId ?: "DOC-${System.currentTimeMillis()}",
                 issuer = extractResult.issuer
             )
 
-            val sourceResponse = try {
+            val sourceResponse =
                 RetrofitClient.apiService.discoverSource(sourceRequest)
-            } catch (e: Throwable) {
-                null
+
+            if (!sourceResponse.isSuccessful || sourceResponse.body() == null) {
+                emit(UploadUiState.Error("Source discovery failed"))
+                return@flow
             }
 
-            val sourceResult = sourceResponse?.body()
-            val sourceContent = sourceResult?.sourceContent ?: ""
+            val sourceResult = sourceResponse.body()!!
 
-            // STEP 3 — Compare
-            emit(UploadUiState.Uploading(0.75f, "📊 Comparing documents..."))
-
-            val (similarity, differences) = try {
+            // STEP 3 â€” Compare
+            val (similarity, differences) =
                 CompareEngine.compareDocuments(
                     extractResult.extractedText,
-                    sourceContent
+                    sourceResult.sourceContent?: ""
+
                 )
-            } catch (e: Throwable) {
-                Pair(75, emptyList<String>())
-            }
 
-            // STEP 4 — Gemini AI (with full fallback)
-            emit(UploadUiState.Uploading(0.85f, "🤖 AI analysis in progress..."))
-
-            val aiSummary = try {
+            // STEP 4 â€” Gemini AI
+            val aiSummary =
                 GeminiAnalyzer.analyzeDocument(
                     extractResult.extractedText,
-                    sourceContent,
+                    sourceResult.sourceContent,
                     extractResult.issuer,
                     similarity,
                     differences
                 )
-            } catch (e: Throwable) {
-                getFallbackSummary(similarity)
-            }
 
             val risk = when {
-                sourceContent.isBlank() -> "Unverified"
+                sourceResult.sourceContent.isNullOrBlank() -> "Unverified"
                 similarity >= 85 -> "Low"
                 similarity >= 60 -> "Medium"
                 else -> "High"
             }
 
             val verdict = when {
-                sourceContent.isBlank() -> "UNVERIFIED"
+                sourceResult.sourceContent.isNullOrBlank() -> "UNVERIFIED"
                 similarity >= 85 -> "AUTHENTIC"
                 similarity >= 60 -> "SUSPICIOUS"
                 else -> "FAKE"
             }
-
             emit(
                 UploadUiState.Success(
                     VerifyApiResponse(
@@ -114,16 +109,12 @@ class VerificationRepository(private val context: Context) {
                 )
             )
 
-        } catch (e: Throwable) {
-            emit(UploadUiState.Error(e.message ?: "Something went wrong"))
-        }
-    }
-
-    private fun getFallbackSummary(similarity: Int): String {
-        return when {
-            similarity >= 85 -> "Document analysis complete. High authenticity detected. Content integrity verified. No tampering found."
-            similarity >= 60 -> "Document analysis complete. Moderate similarity to official sources. Some differences detected that may require review."
-            else -> "Document analysis complete. Significant differences found between this document and official sources. Manual verification recommended."
+        } catch (e: Exception) {
+            emit(
+                UploadUiState.Error(
+                    e.message ?: "Something went wrong"
+                )
+            )
         }
     }
 }
