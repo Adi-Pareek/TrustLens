@@ -1,27 +1,27 @@
 from fastapi import APIRouter, UploadFile, File
 import pdfplumber
-import google.generativeai as genai
 import io
+import os
+import google.generativeai as genai
 
 router = APIRouter()
 
-# Configure Gemini
-import os
+# Load API key from Render environment
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def get_issuer(text):
-    model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
+
+def get_issuer(text):
     prompt = f"""
-    Extract the issuing organization/company/hospital name from this document.
+    Extract the company/organization/issuer name from this document.
     Return only the issuer name.
 
     Document:
-    {text[:2000]}
+    {text[:1000]}
     """
 
     response = model.generate_content(prompt)
-
     return response.text.strip()
 
 
