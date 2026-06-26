@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    // ⚠️ Backend teammate: replace this with real URL
+    // ⚠️ Change this when Member 3 & 4 give you the real server URL
     private const val BASE_URL = "https://overhead-skimming-embezzle.ngrok-free.dev/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -17,9 +17,9 @@ object RetrofitClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     val apiService: ApiService by lazy {

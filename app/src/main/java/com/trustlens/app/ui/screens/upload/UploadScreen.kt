@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.trustlens.app.data.model.VerificationState
+import com.trustlens.app.data.model.UploadUiState
 import com.trustlens.app.ui.Screen
 import com.trustlens.app.ui.theme.*
 import com.trustlens.app.viewmodel.VerificationViewModel
@@ -37,12 +36,14 @@ fun UploadScreen(
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
 
-    val verificationState by viewModel.verificationState.collectAsStateWithLifecycle()
-    val uploadProgress by viewModel.uploadProgress.collectAsStateWithLifecycle()
-    val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
+    // Observe the single uiState from our new ViewModel
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val isUploading = uiState is UploadUiState.Uploading
+    val uploadProgress = (uiState as? UploadUiState.Uploading)?.progress ?: 0f
+    val statusMessage = (uiState as? UploadUiState.Uploading)?.statusMessage ?: ""
 
     val contentAlpha = remember { Animatable(0f) }
-    val isUploading = verificationState is VerificationState.Loading
 
     val pulseAnim = rememberInfiniteTransition(label = "pulse")
     val pulseScale by pulseAnim.animateFloat(
@@ -59,9 +60,9 @@ fun UploadScreen(
         contentAlpha.animateTo(1f, animationSpec = tween(500))
     }
 
-    // Navigate to dashboard when done
-    LaunchedEffect(verificationState) {
-        if (verificationState is VerificationState.Success) {
+    // Navigate to dashboard when verification is successful
+    LaunchedEffect(uiState) {
+        if (uiState is UploadUiState.Success) {
             navController.navigate(Screen.Dashboard.route)
         }
     }
@@ -284,6 +285,31 @@ fun UploadScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Error message
+            if (uiState is UploadUiState.Error) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = ScoreLow.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("❌", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = (uiState as UploadUiState.Error).message,
+                            fontSize = 13.sp,
+                            color = ScoreLow
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Info Cards
