@@ -16,13 +16,13 @@ interface ApiService {
 
     // Member 3 — /extract
     @Multipart
-    @POST("extract")
+    @POST("extract/")
     suspend fun extractDocument(
         @Part file: MultipartBody.Part
     ): Response<ExtractResponse>
 
     // Member 3 — /source-discovery
-    @POST("source-discovery")
+    @POST("source-discovery/")
     suspend fun discoverSource(
         @Body request: SourceDiscoveryRequest
     ): Response<SourceDiscoveryResponse>
