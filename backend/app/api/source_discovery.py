@@ -8,4 +8,11 @@ def source_discovery(payload: dict):
     issuer = payload.get("issuer")
     title = payload.get("title")
 
-    return find_official_source(issuer, title)
+    print("Issuer received:", issuer)
+    print("Title received:", title)
+
+    result = find_official_source(issuer, title)
+
+    print("Source result:", result)
+
+    return result

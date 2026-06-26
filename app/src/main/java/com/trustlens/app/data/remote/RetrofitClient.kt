@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     // ⚠️ Change this when Member 3 & 4 give you the real server URL
-    private const val BASE_URL = "https://trustlens-api-2sta.onrender.com/"
+    private const val BASE_URL = "https://trustlens-r5f3.onrender.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

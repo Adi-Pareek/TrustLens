@@ -33,7 +33,7 @@ class VerificationRepository(private val context: Context) {
             val filePart =
                 MultipartBody.Part.createFormData("file", "document", requestBody)
 
-            // STEP 1 â€” OCR
+            // STEP 1 - OCR
             emit(UploadUiState.Uploading(0.4f, "Running OCR..."))
 
             val extractResponse =
@@ -46,12 +46,12 @@ class VerificationRepository(private val context: Context) {
 
             val extractResult = extractResponse.body()!!
 
-            // STEP 2 â€” Source Discovery
+            // STEP 2 - Source Discovery
             emit(UploadUiState.Uploading(0.6f, "Finding official source..."))
 
             val sourceRequest = SourceDiscoveryRequest(
                 documentId = extractResult.documentId ?: "DOC-${System.currentTimeMillis()}",
-                issuer = extractResult.issuer
+                issuer = extractResult.issuer ?: "Unknown"
             )
 
             val sourceResponse =
@@ -64,20 +64,19 @@ class VerificationRepository(private val context: Context) {
 
             val sourceResult = sourceResponse.body()!!
 
-            // STEP 3 â€” Compare
+            // STEP 3 - Compare
             val (similarity, differences) =
                 CompareEngine.compareDocuments(
-                    extractResult.extractedText,
-                    sourceResult.sourceContent?: ""
-
+                    extractResult.extractedText ?: "",
+                    sourceResult.sourceContent ?: ""
                 )
 
-            // STEP 4 â€” Gemini AI
+            // STEP 4 - Gemini AI
             val aiSummary =
                 GeminiAnalyzer.analyzeDocument(
-                    extractResult.extractedText,
-                    sourceResult.sourceContent,
-                    extractResult.issuer,
+                    extractResult.extractedText ?: "",
+                    sourceResult.sourceContent ?: "",
+                    extractResult.issuer ?: "Unknown",
                     similarity,
                     differences
                 )
@@ -95,11 +94,13 @@ class VerificationRepository(private val context: Context) {
                 similarity >= 60 -> "SUSPICIOUS"
                 else -> "FAKE"
             }
+
             emit(
                 UploadUiState.Success(
                     VerifyApiResponse(
                         success = true,
-                        documentId = extractResult.documentId ?: "DOC-${System.currentTimeMillis()}",
+                        documentId = extractResult.documentId
+                            ?: "DOC-${System.currentTimeMillis()}",
                         trustScore = similarity,
                         risk = risk,
                         summary = aiSummary,

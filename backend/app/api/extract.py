@@ -6,44 +6,71 @@ import google.generativeai as genai
 
 router = APIRouter()
 
-api_key = os.getenv("GEMINI_API_KEY")
-print("API KEY:", api_key)
+# Configure Gemini API
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-genai.configure(api_key=api_key)
-
-model = genai.GenerativeModel("gemini-2.0-flash")
+# Gemini model
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 
 def get_issuer(text):
-    prompt = f"""
-    Extract the company/organization/issuer name from this document.
-    Return only issuer name.
+    try:
+        prompt = f"""
+        Extract the company, organization, hospital, university, or issuer name
+        from this document.
 
-    Document:
-    {text[:1000]}
-    """
+        Return only the issuer name.
 
-    response = model.generate_content(prompt)
-    return response.text.strip()
+        Document:
+        {text[:1000]}
+        """
+
+        response = model.generate_content(prompt)
+
+        if response.text and response.text.strip():
+            return response.text.strip()
+
+        return "Unknown"
+
+    except Exception as e:
+        print("Issuer extraction error:", e)
+        return "Unknown"
 
 
 @router.post("/")
 async def extract(file: UploadFile = File(...)):
-    content = await file.read()
-    text = ""
+    try:
+        content = await file.read()
+        text = ""
 
-    if file.filename.endswith(".pdf"):
-        with pdfplumber.open(io.BytesIO(content)) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
+        # PDF extraction
+        if file.filename.endswith(".pdf"):
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    text += page.extract_text() or ""
 
-    if not text.strip():
-        return {"error": "No text extracted from PDF"}
+        # Image support placeholder
+        elif file.filename.endswith((".jpg", ".jpeg", ".png")):
+            return {
+                "error": "Image OCR not implemented yet"
+            }
 
-    issuer = get_issuer(text)
+        # If text empty
+        if not text.strip():
+            return {
+                "error": "No text extracted from PDF"
+            }
 
-    return {
-        "text": text[:1000],
-        "issuer": issuer,
-        "title": text[:80]
-    }
+        issuer = get_issuer(text)
+
+        return {
+            "text": text[:1000],
+            "issuer": issuer if issuer else "Unknown",
+            "title": text[:80] if text else "Untitled"
+        }
+
+    except Exception as e:
+        print("Extraction error:", e)
+        return {
+            "error": str(e)
+        }

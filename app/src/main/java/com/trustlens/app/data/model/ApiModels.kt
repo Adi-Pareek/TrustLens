@@ -25,7 +25,7 @@ data class DocumentMetadata(
 
 data class SourceDiscoveryRequest(
     @SerializedName("document_id") val documentId: String,
-    @SerializedName("issuer") val issuer: String
+    @SerializedName("issuer") val issuer: String?
 )
 
 data class SourceDiscoveryResponse(
