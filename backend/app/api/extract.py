@@ -6,16 +6,18 @@ import google.generativeai as genai
 
 router = APIRouter()
 
-# Load API key from Render environment
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+print("API KEY:", api_key)
 
-model = genai.GenerativeModel("gemini-2.5-flash")
+genai.configure(api_key=api_key)
+
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 
 def get_issuer(text):
     prompt = f"""
     Extract the company/organization/issuer name from this document.
-    Return only the issuer name.
+    Return only issuer name.
 
     Document:
     {text[:1000]}
@@ -28,13 +30,15 @@ def get_issuer(text):
 @router.post("/")
 async def extract(file: UploadFile = File(...)):
     content = await file.read()
-
     text = ""
 
     if file.filename.endswith(".pdf"):
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             for page in pdf.pages:
                 text += page.extract_text() or ""
+
+    if not text.strip():
+        return {"error": "No text extracted from PDF"}
 
     issuer = get_issuer(text)
 
