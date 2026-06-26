@@ -31,7 +31,11 @@ class VerificationRepository(private val context: Context) {
                 bytes.toRequestBody("application/octet-stream".toMediaTypeOrNull())
 
             val filePart =
-                MultipartBody.Part.createFormData("file", "document", requestBody)
+                MultipartBody.Part.createFormData(
+                    "file",
+                    "document",
+                    requestBody
+                )
 
             // STEP 1 - OCR
             emit(UploadUiState.Uploading(0.4f, "Running OCR..."))
@@ -50,7 +54,7 @@ class VerificationRepository(private val context: Context) {
             emit(UploadUiState.Uploading(0.6f, "Finding official source..."))
 
             val sourceRequest = SourceDiscoveryRequest(
-                documentId = extractResult.documentId ?: "DOC-${System.currentTimeMillis()}",
+                documentId = "DOC-${System.currentTimeMillis()}",
                 issuer = extractResult.issuer ?: "Unknown"
             )
 
@@ -68,28 +72,28 @@ class VerificationRepository(private val context: Context) {
             val (similarity, differences) =
                 CompareEngine.compareDocuments(
                     extractResult.extractedText ?: "",
-                    sourceResult.sourceContent ?: ""
+                    sourceResult.officialSource ?: ""
                 )
 
             // STEP 4 - Gemini AI
             val aiSummary =
                 GeminiAnalyzer.analyzeDocument(
                     extractResult.extractedText ?: "",
-                    sourceResult.sourceContent ?: "",
+                    sourceResult.officialSource ?: "",
                     extractResult.issuer ?: "Unknown",
                     similarity,
                     differences
                 )
 
             val risk = when {
-                sourceResult.sourceContent.isNullOrBlank() -> "Unverified"
+                sourceResult.officialSource.isNullOrBlank() -> "Unverified"
                 similarity >= 85 -> "Low"
                 similarity >= 60 -> "Medium"
                 else -> "High"
             }
 
             val verdict = when {
-                sourceResult.sourceContent.isNullOrBlank() -> "UNVERIFIED"
+                sourceResult.officialSource.isNullOrBlank() -> "UNVERIFIED"
                 similarity >= 85 -> "AUTHENTIC"
                 similarity >= 60 -> "SUSPICIOUS"
                 else -> "FAKE"
@@ -99,8 +103,7 @@ class VerificationRepository(private val context: Context) {
                 UploadUiState.Success(
                     VerifyApiResponse(
                         success = true,
-                        documentId = extractResult.documentId
-                            ?: "DOC-${System.currentTimeMillis()}",
+                        documentId = "DOC-${System.currentTimeMillis()}",
                         trustScore = similarity,
                         risk = risk,
                         summary = aiSummary,

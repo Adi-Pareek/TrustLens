@@ -5,19 +5,9 @@ import com.google.gson.annotations.SerializedName
 // /extract (Member 3)
 
 data class ExtractResponse(
-    @SerializedName("success") val success: Boolean? = true,
-    @SerializedName("document_id") val documentId: String? = null,
-    @SerializedName("issuer") val issuer: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("text") val extractedText: String,
-    @SerializedName("metadata") val metadata: DocumentMetadata? = null
-)
-
-data class DocumentMetadata(
-    @SerializedName("file_type") val fileType: String? = null,
-    @SerializedName("page_count") val pageCount: Int? = null,
-    @SerializedName("created_date") val createdDate: String? = null,
-    @SerializedName("language") val language: String? = null
+    @SerializedName("text") val extractedText: String?,
+    @SerializedName("issuer") val issuer: String?,
+    @SerializedName("title") val title: String?
 )
 
 
@@ -29,11 +19,9 @@ data class SourceDiscoveryRequest(
 )
 
 data class SourceDiscoveryResponse(
-    @SerializedName("success") val success: Boolean? = true,
-    @SerializedName("document_id") val documentId: String? = null,
-    @SerializedName("official_url") val officialUrl: String? = null,
-    @SerializedName("source_found") val sourceFound: Boolean? = false,
-    @SerializedName("source_content") val sourceContent: String
+    @SerializedName("issuer") val issuer: String? = null,
+    @SerializedName("official_source") val officialSource: String? = null,
+    @SerializedName("confidence") val confidence: Double? = 0.0
 )
 
 
