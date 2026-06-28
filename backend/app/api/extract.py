@@ -18,7 +18,7 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 
-ddef get_issuer(text):
+def get_issuer(text):
      try:
          prompt = f"""
          Identify the MAIN issuing organization of this document.
