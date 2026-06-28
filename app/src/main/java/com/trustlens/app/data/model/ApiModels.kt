@@ -17,10 +17,10 @@ data class SourceDiscoveryRequest(
     @SerializedName("document_id") val documentId: String,
     @SerializedName("issuer") val issuer: String?
 )
-
 data class SourceDiscoveryResponse(
     @SerializedName("issuer") val issuer: String? = null,
     @SerializedName("official_source") val officialSource: String? = null,
+    @SerializedName("source_content") val sourceContent: String? = null,
     @SerializedName("confidence") val confidence: Double? = 0.0
 )
 

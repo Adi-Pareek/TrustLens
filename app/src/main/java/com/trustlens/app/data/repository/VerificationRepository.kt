@@ -67,6 +67,9 @@ class VerificationRepository(private val context: Context) {
             }
 
             val sourceResult = sourceResponse.body()!!
+            println("Issuer: ${extractResult.issuer}")
+            println("Official Source: ${sourceResult.officialSource}")
+            println("Source Content: ${sourceResult.sourceContent}")
 
             // STEP 3 - Compare
             val (similarity, differences) =
