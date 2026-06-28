@@ -127,7 +127,10 @@ class VerificationRepository(private val context: Context) {
                         risk = risk,
                         summary = aiSummary,
                         differences = differences,
-                        verdict = verdict
+                        verdict = verdict,
+                        issuer = extractResult.issuer,
+                        confidence = sourceResult.confidence,
+                        officialSource = sourceResult.officialSource
                     )
                 )
             )

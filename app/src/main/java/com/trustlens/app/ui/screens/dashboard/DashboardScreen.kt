@@ -253,12 +253,64 @@ fun DashboardScreen(
 
             // source Verification
             // Source Verification
-            SectionCard(title = "Source Verification") {
-                Text(
-                    text = "Source verification data not available.",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
+            @Composable
+            fun SectionCard(
+                title: String,
+                content: @Composable ColumnScope.() -> Unit
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            text = title,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        content()
+                    }
+                }
+            }
+            @Composable
+            fun SourceItem(
+                source: String,
+                status: String,
+                verified: Boolean
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (verified) "✅" else "⚠️",
+                        fontSize = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
+                        Text(
+                            text = source,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+
+                        Text(
+                            text = status,
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
