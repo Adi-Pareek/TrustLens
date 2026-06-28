@@ -54,22 +54,22 @@ data class VerifyApiResponse(
     val success: Boolean,
 
     @SerializedName("document_id")
-    val documentId: String,
+    val documentId: String?,
 
     @SerializedName("trust_score")
-    val trustScore: Int,
+    val trustScore: Int?,
 
     @SerializedName("risk")
-    val risk: String,
+    val risk: String?,
 
     @SerializedName("summary")
-    val summary: String,
+    val summary: String?,
 
     @SerializedName("differences")
-    val differences: List<String>,
+    val differences: List<String>?,
 
     @SerializedName("verdict")
-    val verdict: String,
+    val verdict: String?,
 
     @SerializedName("issuer")
     val issuer: String?,

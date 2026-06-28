@@ -25,8 +25,10 @@ interface ApiService {
         @Body request: SourceDiscoveryRequest
     ): Response<SourceDiscoveryResponse>
 
-    @POST("verify/")
+
+    @Multipart
+    @POST("process-document/")
     suspend fun verifyDocument(
-        @Body request: VerifyRequest
+        @Part file: MultipartBody.Part
     ): Response<VerifyApiResponse>
 }

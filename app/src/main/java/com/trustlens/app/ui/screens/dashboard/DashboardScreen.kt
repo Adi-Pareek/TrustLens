@@ -22,7 +22,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.trustlens.app.data.model.UploadUiState
-//import com.trustlens.app.data.model.VerifyApiResponse
 import com.trustlens.app.ui.Screen
 import com.trustlens.app.ui.theme.*
 import com.trustlens.app.viewmodel.VerificationViewModel
@@ -37,7 +36,7 @@ fun DashboardScreen(
 
     val contentAlpha = remember { Animatable(0f) }
     val trustScoreAnim = remember { Animatable(0f) }
-    val targetScore = result?.trustScore?.toFloat() ?: 87f
+    val targetScore = result?.trustScore?.toFloat() ?: 0f
 
     LaunchedEffect(result) {
         contentAlpha.animateTo(1f, animationSpec = tween(500))
@@ -53,13 +52,7 @@ fun DashboardScreen(
         else -> ScoreLow
     }
 
-    // Map "Low" / "Medium" / "High" from API to display label
-    val riskLabel = when (result?.risk?.uppercase() ?: "LOW") {
-        "LOW" -> "LOW"
-        "MEDIUM" -> "MEDIUM"
-        "HIGH" -> "HIGH"
-        else -> "LOW"
-    }
+    val riskLabel = result?.risk ?: "LOW"
 
     Box(
         modifier = Modifier
@@ -76,83 +69,33 @@ fun DashboardScreen(
         ) {
             Spacer(modifier = Modifier.height(56.dp))
 
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Trust Score Card
+            SectionCard(title = "Verification Report") {
                 Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(SurfaceCard, CircleShape)
-                        .clickable { navController.popBackStack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("←", fontSize = 18.sp, color = TextPrimary)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = "Verification Report",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Analysis complete",
-                        fontSize = 12.sp,
-                        color = ScoreHigh
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Box(
-                    modifier = Modifier
-                        .background(SurfaceCard, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text("Share 📤", fontSize = 12.sp, color = TrustCyan)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Trust Score Ring
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceCard)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    TrustBlueLight.copy(alpha = 0.2f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                        .padding(28.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(160.dp)
                         ) {
-                            androidx.compose.foundation.Canvas(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
                                 val strokeWidth = 16.dp.toPx()
                                 val sweepAngle = (trustScoreAnim.value / 100f) * 300f
+
                                 drawArc(
                                     color = SurfaceElevated,
                                     startAngle = 120f,
                                     sweepAngle = 300f,
                                     useCenter = false,
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                    style = Stroke(
+                                        width = strokeWidth,
+                                        cap = StrokeCap.Round
+                                    )
                                 )
+
                                 drawArc(
                                     brush = Brush.sweepGradient(
                                         colors = listOf(
@@ -163,17 +106,26 @@ fun DashboardScreen(
                                     startAngle = 120f,
                                     sweepAngle = sweepAngle,
                                     useCenter = false,
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                    style = Stroke(
+                                        width = strokeWidth,
+                                        cap = StrokeCap.Round
+                                    )
                                 )
                             }
+
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${trustScoreAnim.value.toInt()}",
-                                    fontSize = 48.sp,
+                                    fontSize = 40.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = scoreColor
                                 )
-                                Text(text = "/ 100", fontSize = 14.sp, color = TextSecondary)
+
+                                Text(
+                                    text = "/100",
+                                    fontSize = 14.sp,
+                                    color = TextSecondary
+                                )
                             }
                         }
 
@@ -181,16 +133,17 @@ fun DashboardScreen(
 
                         Text(
                             text = "$riskLabel TRUST",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
                             color = scoreColor,
-                            letterSpacing = 2.sp
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
-                            text = result?.summary?.take(60) ?: "This document appears authentic",
-                            fontSize = 14.sp,
+                            text = result?.summary ?: "Analysis complete",
                             color = TextSecondary,
+                            fontSize = 13.sp,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -199,119 +152,85 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Risk Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                RiskBadge("🛡️", "Risk Level", riskLabel, scoreColor, Modifier.weight(1f))
-                RiskBadge("✅", "Verdict", result?.verdict ?: "AUTHENTIC", TrustCyan, Modifier.weight(1f))
-                RiskBadge("🤖", "Powered By", "AI + OCR", TextPrimary, Modifier.weight(1f))
+                RiskBadge(
+                    "🛡️",
+                    "Risk Level",
+                    riskLabel,
+                    scoreColor,
+                    Modifier.weight(1f)
+                )
+
+                RiskBadge(
+                    "✅",
+                    "Verdict",
+                    result?.verdict ?: "Pending",
+                    TrustCyan,
+                    Modifier.weight(1f)
+                )
+
+                RiskBadge(
+                    "🤖",
+                    "Powered By",
+                    "AI + OCR",
+                    TextPrimary,
+                    Modifier.weight(1f)
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // AI Summary
             SectionCard(title = "🤖 AI Analysis Summary") {
                 Text(
-                    text = result?.summary ?: "Analysis complete.",
+                    text = result?.summary ?: "No summary available",
                     fontSize = 13.sp,
-                    color = TextSecondary,
-                    lineHeight = 20.sp
+                    color = TextSecondary
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Detected Issues / Differences
             SectionCard(title = "⚠️ Detected Issues") {
-                val differences = result?.differences
-                if (differences.isNullOrEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ScoreHigh.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
-                            .padding(14.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✅", fontSize = 20.sp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "No issues detected. Document passed all checks.",
-                                fontSize = 13.sp,
-                                color = ScoreHigh,
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
-                } else {
-                    differences.forEach { issue ->
-                        Text("• $issue", fontSize = 13.sp, color = ScoreLow, lineHeight = 20.sp)
-                    }
-                }
-            }
-
-            // source Verification
-            // Source Verification
-            @Composable
-            fun SectionCard(
-                title: String,
-                content: @Composable ColumnScope.() -> Unit
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceCard)
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Text(
-                            text = title,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        content()
-                    }
-                }
-            }
-            @Composable
-            fun SourceItem(
-                source: String,
-                status: String,
-                verified: Boolean
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (result?.differences.isNullOrEmpty()) {
                     Text(
-                        text = if (verified) "✅" else "⚠️",
-                        fontSize = 18.sp
+                        text = "No issues detected.",
+                        color = ScoreHigh
                     )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
+                } else {
+                    result?.differences?.forEach {
                         Text(
-                            text = source,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextPrimary
-                        )
-
-                        Text(
-                            text = status,
-                            fontSize = 12.sp,
-                            color = TextSecondary
+                            text = "• $it",
+                            color = ScoreLow
                         )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SectionCard(title = "🌐 Source Verification") {
+                SourceItem(
+                    source = "Issuer",
+                    status = result?.issuer ?: "Not Available",
+                    verified = result?.issuer != null
+                )
+
+                SourceItem(
+                    source = "Official Source",
+                    status = result?.officialSource ?: "Not Available",
+                    verified = result?.officialSource != null
+                )
+
+                SourceItem(
+                    source = "Confidence",
+                    status = "${result?.confidence ?: 0.0}",
+                    verified = (result?.confidence ?: 0.0) > 0
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
@@ -321,29 +240,9 @@ fun DashboardScreen(
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = TrustCyan,
-                    contentColor = TrustBlueDark
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Verify Another Document", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, TextDisabled)
-            ) {
-                Text("Download Report 📥", fontSize = 15.sp, color = TextSecondary)
+                Text("Verify Another Document")
             }
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -360,74 +259,87 @@ fun RiskBadge(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.height(120.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceCard)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(emoji, fontSize = 20.sp)
+            Text(emoji, fontSize = 22.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
-            Text(label, fontSize = 10.sp, color = TextSecondary, textAlign = TextAlign.Center)
+            Text(
+                text = value,
+                fontWeight = FontWeight.Bold,
+                color = valueColor,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
         }
     }
 }
 
-//sectionCard
 @Composable
-fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceCard)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
             Spacer(modifier = Modifier.height(12.dp))
             content()
         }
     }
+}
 
-    //changes
-
-    @Composable
-    fun SourceItem(
-        source: String,
-        status: String,
-        verified: Boolean
+@Composable
+fun SourceItem(
+    source: String,
+    status: String,
+    verified: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Text(
+            text = if (verified) "✅" else "⚠️",
+            fontSize = 18.sp
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column {
             Text(
-                text = if (verified) "✅" else "⚠️",
-                fontSize = 18.sp
+                text = source,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Column {
-                Text(
-                    text = source,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary
-                )
-
-                Text(
-                    text = status,
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
+            Text(
+                text = status,
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
         }
     }
 }

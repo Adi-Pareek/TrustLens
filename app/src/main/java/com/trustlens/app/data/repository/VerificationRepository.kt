@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import com.trustlens.app.data.model.SourceDiscoveryRequest
 import com.trustlens.app.data.model.UploadUiState
-import com.trustlens.app.data.model.VerifyApiResponse
 import com.trustlens.app.data.remote.RetrofitClient
 import com.trustlens.app.domain.CompareEngine
 import com.trustlens.app.domain.GeminiAnalyzer
@@ -16,7 +15,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class VerificationRepository(private val context: Context) {
 
-    fun verifyDocument(uri: Uri): Flow<UploadUiState> = flow<UploadUiState> {
+    fun verifyDocument(uri: Uri): Flow<UploadUiState> = flow {
 
         emit(UploadUiState.Uploading(0.1f, "Uploading document..."))
 
@@ -55,7 +54,7 @@ class VerificationRepository(private val context: Context) {
 
             val sourceRequest = SourceDiscoveryRequest(
                 documentId = "DOC-${System.currentTimeMillis()}",
-                issuer = extractResult.issuer ?: "Unknown"
+                issuer = extractResult.issuer
             )
 
             val sourceResponse =
@@ -68,7 +67,7 @@ class VerificationRepository(private val context: Context) {
 
             val sourceResult = sourceResponse.body()!!
 
-            // STEP 3 - Compare documents
+            // STEP 3 - Compare
             emit(UploadUiState.Uploading(0.7f, "Comparing documents..."))
 
             val extractedText = extractResult.extractedText
@@ -87,48 +86,36 @@ class VerificationRepository(private val context: Context) {
                 GeminiAnalyzer.analyzeDocument(
                     extractedText,
                     sourceText,
-                    extractResult.issuer ?: "Unknown",
+                    extractResult.issuer,
                     similarity,
                     differences
                 )
 
-            // Risk + Verdict Logic
-            val risk: String
-            val verdict: String
+            // STEP 5 - Final verification API (send FILE, not JSON)
+            val verifyResponse =
+                RetrofitClient.apiService.verifyDocument(filePart)
 
-            when {
-                similarity >= 85 -> {
-                    risk = "Low"
-                    verdict = "AUTHENTIC"
-                }
-
-                similarity >= 60 -> {
-                    risk = "Medium"
-                    verdict = "SUSPICIOUS"
-                }
-
-                similarity > 0 -> {
-                    risk = "High"
-                    verdict = "FAKE"
-                }
-
-                else -> {
-                    risk = "Unverified"
-                    verdict = "UNVERIFIED"
-                }
+            if (!verifyResponse.isSuccessful || verifyResponse.body() == null) {
+                emit(
+                    UploadUiState.Error(
+                        "Final verification failed: ${verifyResponse.errorBody()?.string()}"
+                    )
+                )
+                return@flow
             }
+
+            val finalResult = verifyResponse.body()!!
 
             emit(
                 UploadUiState.Success(
-                    VerifyApiResponse(
-                        success = true,
-                        documentId = "DOC-${System.currentTimeMillis()}",
+                    finalResult.copy(
+                        documentId = finalResult.documentId ?: "DOC-${System.currentTimeMillis()}",
                         trustScore = similarity.coerceIn(0, 100),
-                        risk = risk,
-                        summary = aiSummary,
-                        differences = differences,
-                        verdict = verdict,
-                        issuer = extractResult.issuer,
+                        risk = finalResult.risk ?: "Unverified",
+                        summary = aiSummary.ifBlank { finalResult.summary ?: "Analysis completed" },
+                        differences = if (differences.isNotEmpty()) differences else finalResult.differences ?: emptyList(),
+                        verdict = finalResult.verdict ?: "Pending Review",
+                        issuer = sourceResult.issuer,
                         confidence = sourceResult.confidence,
                         officialSource = sourceResult.officialSource
                     )
