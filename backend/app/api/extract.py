@@ -18,30 +18,32 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 
-def get_issuer(text):
-    try:
-        prompt = f"""
-        Extract the company, organization, hospital, university, or issuer name
-        from this document.
+ddef get_issuer(text):
+     try:
+         prompt = f"""
+         Identify the MAIN issuing organization of this document.
 
-        Return only the issuer name.
-        If no issuer is found, return "Unknown".
+         Rules:
+         1. Return ONLY the organization/hospital/company/university name.
+         2. Ignore patient names, doctor names, medicine names.
+         3. If hospital prescription, return hospital name.
+         4. If government document, return department name.
+         5. Return only one name.
 
-        Document:
-        {text[:1000]}
-        """
+         Document:
+         {text[:2000]}
+         """
 
-        response = model.generate_content(prompt)
+         response = model.generate_content(prompt)
 
-        if response.text and response.text.strip():
-            return response.text.strip()
+         if response.text and response.text.strip():
+             return response.text.strip()
 
-        return "Unknown"
+         return "Unknown"
 
-    except Exception as e:
-        print("Issuer extraction error:", e)
-        return "Unknown"
-
+     except Exception as e:
+         print("Issuer extraction error:", e)
+         return "Unknown"
 
 @router.post("/")
 async def extract(file: UploadFile = File(...)):
