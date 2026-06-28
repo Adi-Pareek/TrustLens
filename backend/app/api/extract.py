@@ -3,11 +3,16 @@ import pdfplumber
 import io
 import os
 import google.generativeai as genai
+from pdf2image import convert_from_bytes
+import pytesseract
 
 router = APIRouter()
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Configure Tesseract path (Windows)
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Gemini model
 model = genai.GenerativeModel("gemini-2.5-flash")
@@ -19,10 +24,8 @@ def get_issuer(text):
         Extract the company, organization, hospital, university, or issuer name
         from this document.
 
-        Rules:
-        - Return ONLY the issuer name.
-        - If no issuer exists, return "Unknown".
-        - Do not guess.
+        Return only the issuer name.
+        If no issuer is found, return "Unknown".
 
         Document:
         {text[:1000]}
@@ -31,28 +34,13 @@ def get_issuer(text):
         response = model.generate_content(prompt)
 
         if response.text and response.text.strip():
-            issuer = response.text.strip()
+            return response.text.strip()
 
-            # Prevent fake guessed issuers
-            invalid_values = [
-                "unknown",
-                "none",
-                "not found",
-                "n/a",
-                "null",
-                ""
-            ]
-
-            if issuer.lower() in invalid_values:
-                return None
-
-            return issuer
-
-        return None
+        return "Unknown"
 
     except Exception as e:
         print("Issuer extraction error:", e)
-        return None
+        return "Unknown"
 
 
 @router.post("/")
@@ -63,20 +51,29 @@ async def extract(file: UploadFile = File(...)):
 
         # PDF extraction
         if file.filename.endswith(".pdf"):
+
+            # Step 1: Try normal text extraction
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 for page in pdf.pages:
                     text += page.extract_text() or ""
 
-        # Image support placeholder
-        elif file.filename.endswith((".jpg", ".jpeg", ".png")):
-            return {
-                "error": "Image OCR not implemented yet"
-            }
+            # Step 2: OCR fallback for scanned PDFs
+            if not text.strip():
+                print("No selectable text found. Running OCR...")
 
-        # If text empty
+                images = convert_from_bytes(content)
+
+                for img in images:
+                    text += pytesseract.image_to_string(img)
+
+        # Image files OCR
+        elif file.filename.endswith((".jpg", ".jpeg", ".png")):
+            text = pytesseract.image_to_string(io.BytesIO(content))
+
+        # No text found
         if not text.strip():
             return {
-                "error": "No text extracted from PDF"
+                "error": "No text extracted from document"
             }
 
         issuer = get_issuer(text)

@@ -7,3 +7,6 @@ fuzzywuzzy
 python-Levenshtein
 google-generativeai
 beautifulsoup4
+pytesseract
+pdf2image
+Pillow
