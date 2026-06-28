@@ -9,7 +9,6 @@ object CompareEngine {
 
         val differences = mutableListOf<String>()
 
-        // If no official source found
         if (sourceContent.isBlank()) {
             differences.add("No official source found for verification")
             return Pair(0, differences)
@@ -20,11 +19,11 @@ object CompareEngine {
             sourceContent
         )
 
-        if (similarity < 90) {
+        if (similarity < 85) {
             differences.add("Content mismatch detected")
         }
 
-        if (extractedText != sourceContent) {
+        if (similarity < 60) {
             differences.add("Possible modifications found")
         }
 
@@ -40,9 +39,14 @@ object CompareEngine {
             return 0
         }
 
-        val commonLength = text1.commonPrefixWith(text2).length
-        val maxLength = maxOf(text1.length, text2.length)
+        val words1 = text1.lowercase().split("\\s+".toRegex()).toSet()
+        val words2 = text2.lowercase().split("\\s+".toRegex()).toSet()
 
-        return (commonLength * 100 / maxLength)
+        val commonWords = words1.intersect(words2).size
+        val totalWords = maxOf(words1.size, words2.size)
+
+        if (totalWords == 0) return 0
+
+        return ((commonWords.toDouble() / totalWords.toDouble()) * 100).toInt()
     }
 }

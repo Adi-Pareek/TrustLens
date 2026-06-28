@@ -19,7 +19,10 @@ def get_issuer(text):
         Extract the company, organization, hospital, university, or issuer name
         from this document.
 
-        Return only the issuer name.
+        Rules:
+        - Return ONLY the issuer name.
+        - If no issuer exists, return "Unknown".
+        - Do not guess.
 
         Document:
         {text[:1000]}
@@ -28,13 +31,28 @@ def get_issuer(text):
         response = model.generate_content(prompt)
 
         if response.text and response.text.strip():
-            return response.text.strip()
+            issuer = response.text.strip()
 
-        return "Unknown"
+            # Prevent fake guessed issuers
+            invalid_values = [
+                "unknown",
+                "none",
+                "not found",
+                "n/a",
+                "null",
+                ""
+            ]
+
+            if issuer.lower() in invalid_values:
+                return None
+
+            return issuer
+
+        return None
 
     except Exception as e:
         print("Issuer extraction error:", e)
-        return "Unknown"
+        return None
 
 
 @router.post("/")
@@ -65,7 +83,7 @@ async def extract(file: UploadFile = File(...)):
 
         return {
             "text": text[:1000],
-            "issuer": issuer if issuer else "Unknown",
+            "issuer": issuer,
             "title": text[:80] if text else "Untitled"
         }
 

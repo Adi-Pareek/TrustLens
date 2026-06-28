@@ -16,7 +16,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class VerificationRepository(private val context: Context) {
 
-    fun verifyDocument(uri: Uri): Flow<UploadUiState> = flow {
+    fun verifyDocument(uri: Uri): Flow<UploadUiState> = flow<UploadUiState> {
 
         emit(UploadUiState.Uploading(0.1f, "Uploading document..."))
 
@@ -33,12 +33,12 @@ class VerificationRepository(private val context: Context) {
             val filePart =
                 MultipartBody.Part.createFormData(
                     "file",
-                    "document",
+                    "document.pdf",
                     requestBody
                 )
 
             // STEP 1 - OCR
-            emit(UploadUiState.Uploading(0.4f, "Running OCR..."))
+            emit(UploadUiState.Uploading(0.3f, "Extracting text..."))
 
             val extractResponse =
                 RetrofitClient.apiService.extractDocument(filePart)
@@ -51,7 +51,7 @@ class VerificationRepository(private val context: Context) {
             val extractResult = extractResponse.body()!!
 
             // STEP 2 - Source Discovery
-            emit(UploadUiState.Uploading(0.6f, "Finding official source..."))
+            emit(UploadUiState.Uploading(0.5f, "Finding official source..."))
 
             val sourceRequest = SourceDiscoveryRequest(
                 documentId = "DOC-${System.currentTimeMillis()}",
@@ -67,39 +67,55 @@ class VerificationRepository(private val context: Context) {
             }
 
             val sourceResult = sourceResponse.body()!!
-            println("Issuer: ${extractResult.issuer}")
-            println("Official Source: ${sourceResult.officialSource}")
-            println("Source Content: ${sourceResult.sourceContent}")
 
-            // STEP 3 - Compare
+            // STEP 3 - Compare documents
+            emit(UploadUiState.Uploading(0.7f, "Comparing documents..."))
+
+            val extractedText = extractResult.extractedText
+            val sourceText = sourceResult.sourceContent ?: ""
+
             val (similarity, differences) =
                 CompareEngine.compareDocuments(
-                    extractResult.extractedText ?: "",
-                    sourceResult.officialSource ?: ""
+                    extractedText,
+                    sourceText
                 )
 
-            // STEP 4 - Gemini AI
+            // STEP 4 - AI Analysis
+            emit(UploadUiState.Uploading(0.9f, "Analyzing with AI..."))
+
             val aiSummary =
                 GeminiAnalyzer.analyzeDocument(
-                    extractResult.extractedText ?: "",
-                    sourceResult.officialSource ?: "",
+                    extractedText,
+                    sourceText,
                     extractResult.issuer ?: "Unknown",
                     similarity,
                     differences
                 )
 
-            val risk = when {
-                sourceResult.officialSource.isNullOrBlank() -> "Unverified"
-                similarity >= 85 -> "Low"
-                similarity >= 60 -> "Medium"
-                else -> "High"
-            }
+            // Risk + Verdict Logic
+            val risk: String
+            val verdict: String
 
-            val verdict = when {
-                sourceResult.officialSource.isNullOrBlank() -> "UNVERIFIED"
-                similarity >= 85 -> "AUTHENTIC"
-                similarity >= 60 -> "SUSPICIOUS"
-                else -> "FAKE"
+            when {
+                similarity >= 85 -> {
+                    risk = "Low"
+                    verdict = "AUTHENTIC"
+                }
+
+                similarity >= 60 -> {
+                    risk = "Medium"
+                    verdict = "SUSPICIOUS"
+                }
+
+                similarity > 0 -> {
+                    risk = "High"
+                    verdict = "FAKE"
+                }
+
+                else -> {
+                    risk = "Unverified"
+                    verdict = "UNVERIFIED"
+                }
             }
 
             emit(
@@ -107,7 +123,7 @@ class VerificationRepository(private val context: Context) {
                     VerifyApiResponse(
                         success = true,
                         documentId = "DOC-${System.currentTimeMillis()}",
-                        trustScore = similarity,
+                        trustScore = similarity.coerceIn(0, 100),
                         risk = risk,
                         summary = aiSummary,
                         differences = differences,
